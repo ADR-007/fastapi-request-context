@@ -27,6 +27,7 @@ Custom Fields:
     >>> user_id = get_context(MyField.USER_ID)
 """
 
+from fastapi_request_context.aiter import aiter_with_logging_context
 from fastapi_request_context.config import RequestContextConfig
 from fastapi_request_context.context import (
     get_adapter,
@@ -42,6 +43,7 @@ __all__ = [
     "RequestContextConfig",
     "RequestContextMiddleware",
     "StandardContextField",
+    "aiter_with_logging_context",
     "get_adapter",
     "get_context",
     "get_full_context",

@@ -194,7 +194,7 @@ module = "pythonjsonlogger.*"
 ignore_missing_imports = true
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]

@@ -219,6 +219,30 @@ async def validate():
     check_routes_and_dependencies_are_async(app, raise_on_sync=True)
 ```
 
+### Streaming Responses with Context
+
+When using streaming responses, the iteration happens outside the original request context. Use `aiter_with_logging_context` to preserve the logging context during iteration:
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from fastapi_request_context import aiter_with_logging_context, get_context, StandardContextField
+
+app = FastAPI()
+
+@app.get("/stream")
+async def stream():
+    async def generate():
+        # Context is preserved here during iteration
+        request_id = get_context(StandardContextField.REQUEST_ID)
+        for i in range(10):
+            yield f"chunk {i} (request: {request_id})\n"
+
+    return StreamingResponse(aiter_with_logging_context(generate)())
+```
+
+> **Note:** Requires `context-logging` extra: `pip install fastapi-request-context[context-logging]`
+
 ## API Reference
 
 ### Middleware
@@ -234,6 +258,7 @@ async def validate():
 - `set_context(key, value)` - Set a context value
 - `get_context(key)` - Get a context value (returns None if not set)
 - `get_full_context()` - Get all context values as a dict
+- `aiter_with_logging_context(func)` - Preserve logging context in async iterators (requires `context-logging`)
 
 ### Fields
 
