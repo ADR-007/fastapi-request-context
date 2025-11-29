@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/fastapi-request-context.svg)](https://badge.fury.io/py/fastapi-request-context)
 [![Python versions](https://img.shields.io/pypi/pyversions/fastapi-request-context.svg)](https://pypi.org/project/fastapi-request-context/)
 [![CI](https://github.com/ADR-007/fastapi-request-context/actions/workflows/ci.yaml/badge.svg)](https://github.com/ADR-007/fastapi-request-context/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/ADR-007/fastapi-request-context/branch/main/graph/badge.svg)](https://codecov.io/gh/ADR-007/fastapi-request-context)
+![coverage](https://raw.githubusercontent.com/ADR-007/fastapi-request-context/_xml_coverage_reports/data/main/./badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 FastAPI middleware for request ID tracking, correlation IDs, and extensible request context with first-class logging integration.
