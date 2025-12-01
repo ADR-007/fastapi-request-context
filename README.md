@@ -6,7 +6,8 @@
 ![coverage](https://raw.githubusercontent.com/ADR-007/fastapi-request-context/_xml_coverage_reports/data/main/./badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-FastAPI middleware for request ID tracking, correlation IDs, and extensible request context with first-class logging integration.
+FastAPI middleware for request ID tracking, correlation IDs, and extensible request context with first-class logging
+integration.
 
 ## Features
 
@@ -37,6 +38,7 @@ pip install fastapi-request-context[all]
 ```
 
 Using uv:
+
 ```bash
 uv add fastapi-request-context
 ```
@@ -58,6 +60,7 @@ app = RequestContextMiddleware(app)
 ```
 
 Every request now has:
+
 - Unique `request_id` (always generated)
 - `correlation_id` (from `X-Correlation-Id` header or generated)
 - Both added to response headers
@@ -70,14 +73,15 @@ Every request now has:
 ```python
 from fastapi_request_context import get_context, get_full_context, StandardContextField
 
+
 @app.get("/")
 async def root():
     request_id = get_context(StandardContextField.REQUEST_ID)
     correlation_id = get_context(StandardContextField.CORRELATION_ID)
-    
+
     # Or get everything
     all_context = get_full_context()
-    
+
     return {"request_id": request_id}
 ```
 
@@ -87,14 +91,17 @@ async def root():
 from enum import StrEnum
 from fastapi_request_context import set_context, get_context
 
+
 class MyContextField(StrEnum):
     USER_ID = "user_id"
     ORG_ID = "org_id"
+
 
 async def get_current_user(token: str):
     user_id = decode_token(token)
     set_context(MyContextField.USER_ID, user_id)
     return user_id
+
 
 @app.get("/me")
 async def me(user_id: int = Depends(get_current_user)):
@@ -112,17 +119,17 @@ config = RequestContextConfig(
     # Custom ID generators
     request_id_generator=lambda: str(uuid4()),
     correlation_id_generator=lambda: str(uuid4()),
-    
+
     # Custom header names
     request_id_header="X-My-Request-Id",
     correlation_id_header="X-My-Correlation-Id",
-    
+
     # Disable response headers
     add_response_headers=False,
-    
+
     # Use context-logging adapter
     context_adapter="context_logging",
-    
+
     # Only process HTTP (not WebSocket)
     scope_types={"http"},
 )
@@ -165,7 +172,8 @@ logging.basicConfig(handlers=[handler], level=logging.INFO)
 
 ### Access Logs Integration
 
-Context is automatically available in **all log records**, including Uvicorn access logs when using `context-logging` adapter:
+Context is automatically available in **all log records**, including Uvicorn access logs when using `context-logging`
+adapter:
 
 ```python
 from fastapi_request_context import RequestContextMiddleware, RequestContextConfig
@@ -174,30 +182,83 @@ config = RequestContextConfig(context_adapter="context_logging")
 app = RequestContextMiddleware(app, config=config)
 
 # Now access logs will include request_id and correlation_id!
-# Example: INFO 127.0.0.1:8000 - "GET / HTTP/1.1" 200 [request_id=abc123]
+# Example: INFO [request_id=abc123] 127.0.0.1:8000 - "GET / HTTP/1.1" 200
 ```
+
+### Context-Logging Integration
+
+The `context-logging` library provides scoped context that gets attached to log records. Combined with our formatters,
+this enables context in all logs including access logs:
+
+```python
+import logging
+from context_logging import setup_log_record
+from fastapi_request_context import RequestContextMiddleware, RequestContextConfig
+from fastapi_request_context.formatters import SimpleContextFormatter
+
+# Enable context injection into log records (call once at startup)
+setup_log_record()
+
+# Configure logging with a context-aware formatter
+handler = logging.StreamHandler()
+handler.setFormatter(SimpleContextFormatter(
+    fmt="%(levelname)s %(context)s %(message)s"
+))
+logging.basicConfig(handlers=[handler], level=logging.INFO)
+
+# Use context-logging adapter
+config = RequestContextConfig(context_adapter="context_logging")
+app = RequestContextMiddleware(app, config=config)
+```
+
+When using the `context-logging` adapter, you can also add **nested scoped context** within a request using `Context()`:
+
+```python
+from context_logging import Context
+
+
+@app.post("/process")
+async def process_items():
+    logger.info("Starting")  # [request_id=abc123]
+
+    with Context(step=1):
+        logger.info("Processing step 1")  # [request_id=abc123 step=1]
+        await handle_step_1()
+
+    with Context(step=2):
+        logger.info("Processing step 2")  # [request_id=abc123 step=2]
+        await handle_step_2()
+
+    logger.info("Done")  # [request_id=abc123]
+    return {"status": "ok"}
+```
+
+So, each log record will include the request context, and you can add nested scoped context within a request using
+`Context()`.
 
 ### Custom Context Adapter
 
 ```python
 from fastapi_request_context.adapters import ContextAdapter
 
+
 class RedisAdapter(ContextAdapter):
     def set_value(self, key: str, value: Any) -> None:
         redis.hset(self._request_key, key, value)
-    
+
     def get_value(self, key: str) -> Any:
         return redis.hget(self._request_key, key)
-    
+
     def get_all(self) -> dict[str, Any]:
         return redis.hgetall(self._request_key)
-    
+
     def enter_context(self, initial_values: dict[str, Any]) -> None:
         self._request_key = f"request:{uuid4()}"
         redis.hmset(self._request_key, initial_values)
-    
+
     def exit_context(self) -> None:
         redis.delete(self._request_key)
+
 
 config = RequestContextConfig(context_adapter=RedisAdapter())
 app = RequestContextMiddleware(app, config=config)
@@ -210,18 +271,20 @@ Ensure all routes and dependencies are async (required for proper context propag
 ```python
 from fastapi_request_context.validation import check_routes_and_dependencies_are_async
 
+
 @app.on_event("startup")
 async def validate():
     warnings = check_routes_and_dependencies_are_async(app)
     # Logs warnings for any sync routes/dependencies
-    
+
     # Or raise an error
     check_routes_and_dependencies_are_async(app, raise_on_sync=True)
 ```
 
 ### Streaming Responses with Context
 
-When using streaming responses, the iteration happens outside the original request context. Use `aiter_with_logging_context` to preserve the logging context during iteration:
+When using streaming responses, the iteration happens outside the original request context. Use
+`aiter_with_logging_context` to preserve the logging context during iteration:
 
 ```python
 from fastapi import FastAPI
@@ -229,6 +292,7 @@ from fastapi.responses import StreamingResponse
 from fastapi_request_context import aiter_with_logging_context, get_context, StandardContextField
 
 app = FastAPI()
+
 
 @app.get("/stream")
 async def stream():
@@ -285,15 +349,15 @@ async def stream():
 
 ### vs. Manual Implementation
 
-| Feature | Manual | This Library |
-|---------|--------|--------------|
-| Request ID generation | DIY | ✅ Built-in |
-| Correlation ID | DIY | ✅ Built-in |
-| Response headers | DIY | ✅ Automatic |
-| Context storage | DIY | ✅ Pluggable |
-| Logging integration | DIY | ✅ Included |
-| Type safety | Maybe | ✅ Full |
-| Tests | Maybe | ✅ 100% coverage |
+| Feature               | Manual | This Library    |
+|-----------------------|--------|-----------------|
+| Request ID generation | DIY    | ✅ Built-in      |
+| Correlation ID        | DIY    | ✅ Built-in      |
+| Response headers      | DIY    | ✅ Automatic     |
+| Context storage       | DIY    | ✅ Pluggable     |
+| Logging integration   | DIY    | ✅ Included      |
+| Type safety           | Maybe  | ✅ Full          |
+| Tests                 | Maybe  | ✅ 100% coverage |
 
 ### vs. Other Libraries
 
