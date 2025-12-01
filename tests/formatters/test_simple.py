@@ -187,3 +187,33 @@ def test_default_format() -> None:
     formatter = SimpleContextFormatter()
     assert formatter._fmt is not None
     assert "%(context)s" in formatter._fmt
+
+
+def test_custom_separator() -> None:
+    """Test custom separator between context fields."""
+    from fastapi_request_context.adapters import ContextVarsAdapter
+    from fastapi_request_context.context import set_adapter
+
+    adapter = ContextVarsAdapter()
+    set_adapter(adapter)
+    adapter.enter_context({"request_id": "abc", "user_id": "123"})
+
+    try:
+        formatter = SimpleContextFormatter(
+            fmt="%(context)s %(message)s",
+            separator=", ",
+        )
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test message",
+            args=(),
+            exc_info=None,
+        )
+
+        output = formatter.format(record)
+        assert "request_id=abc, user_id=123" in output
+    finally:
+        adapter.exit_context()

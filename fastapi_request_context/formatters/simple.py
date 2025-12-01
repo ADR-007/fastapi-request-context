@@ -35,15 +35,17 @@ class SimpleContextFormatter(logging.Formatter):
         shorten_fields: Fields to truncate to 8 characters (e.g., UUIDs).
         hidden_fields: Fields to completely hide from output.
         shorten_length: Number of characters for shortened fields.
+        separator: Separator between context key-value pairs.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         fmt: str | None = None,
         datefmt: str | None = None,
         shorten_fields: AbstractSet[str] | None = None,
         hidden_fields: AbstractSet[str] | None = None,
         shorten_length: int = 8,
+        separator: str = " ",
     ) -> None:
         """Initialize the formatter.
 
@@ -53,6 +55,7 @@ class SimpleContextFormatter(logging.Formatter):
             shorten_fields: Set of field names to truncate.
             hidden_fields: Set of field names to hide.
             shorten_length: Length for shortened field values.
+            separator: Separator between context key-value pairs.
         """
         # Default format if not provided
         if fmt is None:
@@ -62,6 +65,7 @@ class SimpleContextFormatter(logging.Formatter):
         self.shorten_fields = shorten_fields or set()
         self.hidden_fields = hidden_fields or set()
         self.shorten_length = shorten_length
+        self.separator = separator
 
     def _format_context(self) -> str:
         """Format context values for display.
@@ -89,7 +93,7 @@ class SimpleContextFormatter(logging.Formatter):
         if not parts:
             return ""
 
-        return f"[{' '.join(parts)}]"
+        return f"[{self.separator.join(parts)}]"
 
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record with context.
