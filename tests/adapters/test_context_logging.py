@@ -135,3 +135,25 @@ def test_context_injection_with_dynamic_values(caplog: pytest.LogCaptureFixture)
         assert record.context["request_id"] == "req-001"  # type: ignore[attr-defined]
         assert record.context["correlation_id"] == "corr-xyz"  # type: ignore[attr-defined]
         assert record.context["tenant_id"] == "tenant-abc"  # type: ignore[attr-defined]
+
+
+def test_exception_gets_context_added() -> None:
+    """Test that exceptions get context appended to args via context-logging."""
+    adapter = ContextLoggingAdapter()
+    exc = None
+
+    try:
+        with adapter:
+            adapter.set_value("request_id", "123")
+            adapter.set_value("user_id", "456")
+            raise ValueError("test error")
+    except ValueError as e:
+        exc = e
+
+    assert exc is not None
+    # context-logging adds context to exception args
+    assert len(exc.args) == 2
+    assert exc.args[0] == "test error"
+    assert exc.args[1]["request_id"] == "123"
+    assert exc.args[1]["user_id"] == "456"
+    assert getattr(exc, "__context_logging__", False) is True

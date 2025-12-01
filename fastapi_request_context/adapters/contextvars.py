@@ -87,5 +87,14 @@ class ContextVarsAdapter:
 
         Clears the context dict. Each async task has its own copy due to
         contextvars copy-on-write semantics.
+
+        If an exception occurred, appends the current context to the exception's
+        args (similar to context-logging library behavior).
         """
+        if exc_val is not None and not getattr(exc_val, "__context_logging__", False):
+            context = self.get_all()
+            if context:
+                exc_val.__context_logging__ = True  # type: ignore[attr-defined]
+                exc_val.args += (context,)
+
         _context_var.set(None)

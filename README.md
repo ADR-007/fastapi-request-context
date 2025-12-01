@@ -17,6 +17,7 @@ integration.
 - **Pluggable context backends** - Use `contextvars` (default) or `context-logging`
 - **Custom context fields** - Extend with your own fields via StrEnum
 - **Logging integration** - JSON and human-readable formatters with automatic context injection
+- **Exception context** - Context automatically added to exception args for debugging
 - **Validation utilities** - Check that routes and dependencies are async
 - **Zero configuration** - Works out of the box with sensible defaults
 - **Type-safe** - Full type hints and mypy strict mode
@@ -240,6 +241,19 @@ So, each log record will include the request context, and you can add nested sco
 
 You can implement custom adapters (e.g., Redis-backed) by implementing the `ContextAdapter` protocol.
 See [examples/custom_adapter.py](examples/custom_adapter.py) for a complete example.
+
+### Exception Context
+
+When an exception occurs during request handling, the current context is automatically appended to the
+exception's `args`. This makes debugging easier by showing request context in error messages and tracebacks:
+
+Example:
+```
+ValueError("Something went wrong", {"request_id": "abc123", "user_id": 456})
+```
+
+This behavior is compatible with the `context-logging` library - if context-logging already added context
+to an exception, it won't be added twice.
 
 ### Validation Utilities
 

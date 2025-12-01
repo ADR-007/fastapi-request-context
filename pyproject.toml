@@ -254,6 +254,7 @@ convention = "google"
     "ANN102", # Missing type annotation for cls
     "ANN401", # Allow Any type in fixtures
     "TRY003", # Allow long exception messages
+    "TRY301", # Allow raise in try blocks (needed for exception tests)
     "PLR2004", # Allow magic values
     "PLC0415", # Allow imports not at top level (for test isolation)
     "ARG001", "ARG002",  # Allow unused function arguments (fixtures)

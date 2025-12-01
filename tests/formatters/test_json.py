@@ -144,7 +144,7 @@ def test_exception_formatting() -> None:
     formatter = JsonContextFormatter()
 
     try:
-        raise ValueError("Test error")  # noqa: TRY301
+        raise ValueError("Test error")
     except ValueError:
         exc_info = sys.exc_info()
 

@@ -65,5 +65,9 @@ class ContextAdapter(Protocol):
         """Exit the current context scope.
 
         Called at the end of each request to clean up context storage.
+
+        If an exception occurred, implementations should append the current
+        context to the exception's args for debugging. To avoid double-adding,
+        check for `__context_logging__` attribute before modifying the exception.
         """
         ...

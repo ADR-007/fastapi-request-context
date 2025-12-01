@@ -96,7 +96,13 @@ class ContextLoggingAdapter:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        """Exit the current context scope."""
+        """Exit the current context scope.
+
+        Note:
+            The context-logging library automatically adds context to exceptions
+            via `fill_exception_context` (enabled by default). It sets
+            `__context_logging__` attribute on the exception to avoid double-adding.
+        """
         if self._context_manager is not None:
             self._context_manager.__exit__(exc_type, exc_val, exc_tb)
             self._context_manager = None
