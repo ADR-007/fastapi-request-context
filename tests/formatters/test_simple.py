@@ -77,7 +77,7 @@ def test_shorten_fields() -> None:
         )
 
         output = formatter.format(record)
-        assert "request_id=12345678" in output
+        assert "request_id=12345678…" in output
         assert "12345678901234567890" not in output
     finally:
         adapter.exit_context()

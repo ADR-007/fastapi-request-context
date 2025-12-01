@@ -29,7 +29,7 @@ class SimpleContextFormatter(logging.Formatter):
         >>> logging.basicConfig(handlers=[handler], level=logging.INFO)
         >>>
         >>> logging.info("Request processed")
-        # Output: 2025-01-15 10:30:00 INFO [request_id=3fa85f64] Request processed
+        # Output: 2025-01-15 10:30:00 INFO [request_id=3fa85f64…] Request processed
 
     Attributes:
         shorten_fields: Fields to truncate to 8 characters (e.g., UUIDs).
@@ -82,7 +82,7 @@ class SimpleContextFormatter(logging.Formatter):
             # Shorten if configured
             str_value = str(value)
             if key in self.shorten_fields and len(str_value) > self.shorten_length:
-                str_value = str_value[: self.shorten_length]
+                str_value = str_value[: self.shorten_length] + "…"
 
             parts.append(f"{key}={str_value}")
 

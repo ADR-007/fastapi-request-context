@@ -160,7 +160,7 @@ handler.setFormatter(SimpleContextFormatter(
 ))
 logging.basicConfig(handlers=[handler], level=logging.INFO)
 
-# Output: 2025-01-15 10:30:00 INFO [request_id=3fa85f64 user_id=123] Processing
+# Output: 2025-01-15 10:30:00 INFO [request_id=3fa85f64… user_id=123] Processing
 ```
 
 ### Access Logs Integration
