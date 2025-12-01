@@ -25,10 +25,10 @@ class JsonContextFormatter(logging.Formatter):
         >>>
         >>> logging.info("Request processed")
         # Output: {"message": "Request processed", "level": "INFO",
-        #          "request_id": "...", "correlation_id": "..."}
+        #          "context": {"request_id": "...", "correlation_id": "..."}}
 
     Attributes:
-        context_key: Key name for nested context in output (None for flat).
+        context_key: Key name for nested context in output (default: "context").
         include_standard_fields: Include level, name, timestamp in output.
     """
 
@@ -36,7 +36,7 @@ class JsonContextFormatter(logging.Formatter):
         self,
         fmt: str | None = None,
         datefmt: str | None = None,
-        context_key: str | None = None,
+        context_key: str | None = "context",
         include_standard_fields: bool = True,
     ) -> None:
         """Initialize the formatter.
@@ -44,8 +44,8 @@ class JsonContextFormatter(logging.Formatter):
         Args:
             fmt: Format string (unused, kept for compatibility).
             datefmt: Date format string.
-            context_key: If set, nest context under this key.
-                        If None, merge context at top level.
+            context_key: Nest context under this key (default: "context").
+                        If None, merge context at top level (may cause collisions).
             include_standard_fields: Include level, logger name, timestamp.
         """
         super().__init__(fmt=fmt, datefmt=datefmt)

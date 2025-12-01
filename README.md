@@ -142,8 +142,8 @@ handler = logging.StreamHandler()
 handler.setFormatter(JsonContextFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
 
-# Logs automatically include context:
-# {"message": "Processing", "level": "INFO", "request_id": "...", "user_id": 123}
+# Logs automatically include context (nested under "context" key by default):
+# {"message": "Processing", "level": "INFO", "context": {"request_id": "...", "user_id": 123}}
 ```
 
 #### Simple Formatter (Human-Readable)

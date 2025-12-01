@@ -40,7 +40,8 @@ async def test_formatter_integration_with_middleware() -> None:
     assert len(log_records) == 1
     data = json.loads(log_records[0])
     assert data["message"] == "Processing request"
-    assert data["user_id"] == 123
-    assert "request_id" in data
+    # Context is nested under "context" key by default
+    assert data["context"]["user_id"] == 123
+    assert "request_id" in data["context"]
 
     logger.removeHandler(handler)

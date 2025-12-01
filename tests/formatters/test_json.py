@@ -30,7 +30,7 @@ def test_basic_formatting() -> None:
 
 
 def test_includes_context() -> None:
-    """Test that context is included in JSON output."""
+    """Test that context is included in JSON output (nested by default)."""
     from fastapi_request_context.adapters import ContextVarsAdapter
     from fastapi_request_context.context import set_adapter
 
@@ -53,6 +53,38 @@ def test_includes_context() -> None:
         output = formatter.format(record)
         data = json.loads(output)
 
+        # Default is nested under "context" key
+        assert data["context"]["request_id"] == "test-123"
+        assert data["context"]["user_id"] == 456
+    finally:
+        adapter.exit_context()
+
+
+def test_flat_context_merge() -> None:
+    """Test flat context merging when context_key=None."""
+    from fastapi_request_context.adapters import ContextVarsAdapter
+    from fastapi_request_context.context import set_adapter
+
+    adapter = ContextVarsAdapter()
+    set_adapter(adapter)
+    adapter.enter_context({"request_id": "test-123", "user_id": 456})
+
+    try:
+        formatter = JsonContextFormatter(context_key=None)
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test message",
+            args=(),
+            exc_info=None,
+        )
+
+        output = formatter.format(record)
+        data = json.loads(output)
+
+        # With context_key=None, context is merged flat
         assert data["request_id"] == "test-123"
         assert data["user_id"] == 456
     finally:
