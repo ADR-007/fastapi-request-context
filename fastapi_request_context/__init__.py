@@ -37,9 +37,13 @@ from fastapi_request_context.context import (
     set_context,
 )
 from fastapi_request_context.fields import StandardContextField
-from fastapi_request_context.middleware import RequestContextMiddleware
+from fastapi_request_context.middleware import (
+    FastAPIWrapperMiddleware,
+    RequestContextMiddleware,
+)
 
 __all__ = [
+    "FastAPIWrapperMiddleware",
     "RequestContextConfig",
     "RequestContextMiddleware",
     "StandardContextField",

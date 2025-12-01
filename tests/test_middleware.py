@@ -323,3 +323,26 @@ async def test_non_http_scope_passes_through() -> None:
     # Should have passed through to mock_app
     assert len(received_messages) == 1
     assert received_messages[0]["type"] == "lifespan.startup.complete"
+
+
+def test_wrapper_middleware_proxies_getattr() -> None:
+    """Test that FastAPIWrapperMiddleware proxies attribute access to wrapped app."""
+    app = FastAPI(title="Test App", version="1.0.0")
+    wrapped = RequestContextMiddleware(app)
+
+    # Access attributes on wrapped middleware should proxy to FastAPI app
+    assert wrapped.title == "Test App"
+    assert wrapped.version == "1.0.0"
+    assert wrapped.routes == app.routes
+
+
+def test_wrapper_middleware_proxies_setattr() -> None:
+    """Test that FastAPIWrapperMiddleware proxies attribute setting to wrapped app."""
+    app = FastAPI(title="Original")
+    wrapped = RequestContextMiddleware(app)
+
+    # Setting a non-underscore attribute should proxy to the wrapped app
+    wrapped.title = "Modified"
+
+    assert app.title == "Modified"
+    assert wrapped.title == "Modified"

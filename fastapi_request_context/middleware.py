@@ -1,5 +1,6 @@
 """Request context middleware for FastAPI."""
 
+from abc import ABC, abstractmethod
 from typing import Any
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -52,7 +53,50 @@ def _get_header_value(scope: Scope, header_name: str) -> str | None:
     return None
 
 
-class RequestContextMiddleware:
+class FastAPIWrapperMiddleware(ABC):
+    """Base class for FastAPI wrapper middleware.
+
+    Wraps an ASGI app and proxies attribute access to the wrapped app,
+    allowing the middleware to be used as a drop-in replacement.
+
+    Example:
+        >>> class MyMiddleware(FastAPIWrapperMiddleware):
+        ...     async def __call__(self, scope, receive, send):
+        ...         # Custom logic here
+        ...         return await self._app(scope, receive, send)
+        >>>
+        >>> app = MyMiddleware(FastAPI())
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Initialize the middleware.
+
+        Args:
+            app: The ASGI application to wrap.
+        """
+        self._app = app
+
+    @abstractmethod
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Process the request and call the wrapped app.
+
+        Minimal implementation: `return await self._app(scope, receive, send)`
+        """
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        """Proxy attribute access to the wrapped app."""
+        return getattr(self._app, name)
+
+    def __setattr__(self, key: str, value: Any) -> None:  # noqa: ANN401
+        """Proxy attribute setting to the wrapped app, except internal attrs."""
+        if key == "_app":
+            super().__setattr__(key, value)
+            return
+
+        setattr(self._app, key, value)
+
+
+class RequestContextMiddleware(FastAPIWrapperMiddleware):
     """ASGI middleware for request context management.
 
     This middleware:
@@ -91,11 +135,11 @@ class RequestContextMiddleware:
             app: The ASGI application to wrap.
             config: Optional configuration. Uses defaults if not provided.
         """
-        self.app = app
-        self.config = config or RequestContextConfig()
-        self._adapter = _get_adapter(self.config.context_adapter)
+        super().__init__(app)
+        self.__config = config or RequestContextConfig()
+        self.__adapter = _get_adapter(self.__config.context_adapter)
         # Set global adapter for context functions
-        set_adapter(self._adapter)
+        set_adapter(self.__adapter)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Process ASGI request.
@@ -106,20 +150,20 @@ class RequestContextMiddleware:
             send: ASGI send function.
         """
         # Only process configured scope types
-        if scope["type"] not in self.config.scope_types:
-            await self.app(scope, receive, send)
+        if scope["type"] not in self.__config.scope_types:
+            await self._app(scope, receive, send)
             return
 
         # Generate request_id (always new for security)
-        request_id = self.config.request_id_generator()
+        request_id = self.__config.request_id_generator()
 
         # Get or generate correlation_id
         correlation_id = (
             _get_header_value(
                 scope,
-                self.config.correlation_id_header,
+                self.__config.correlation_id_header,
             )
-            or self.config.correlation_id_generator()
+            or self.__config.correlation_id_generator()
         )
 
         # Set up context
@@ -128,10 +172,10 @@ class RequestContextMiddleware:
             StandardContextField.CORRELATION_ID.value: correlation_id,
         }
 
-        self._adapter.enter_context(initial_context)
+        self.__adapter.enter_context(initial_context)
 
         try:
-            if self.config.add_response_headers:
+            if self.__config.add_response_headers:
                 # Wrap send to inject headers
                 async def send_with_headers(message: Message) -> None:
                     if message["type"] == "http.response.start":
@@ -140,21 +184,21 @@ class RequestContextMiddleware:
                         )
                         headers.append(
                             (
-                                self.config.request_id_header.lower().encode(),
+                                self.__config.request_id_header.lower().encode(),
                                 request_id.encode(),
                             ),
                         )
                         headers.append(
                             (
-                                self.config.correlation_id_header.lower().encode(),
+                                self.__config.correlation_id_header.lower().encode(),
                                 correlation_id.encode(),
                             ),
                         )
                         message = {**message, "headers": headers}
                     await send(message)
 
-                await self.app(scope, receive, send_with_headers)
+                await self._app(scope, receive, send_with_headers)
             else:
-                await self.app(scope, receive, send)
+                await self._app(scope, receive, send)
         finally:
-            self._adapter.exit_context()
+            self.__adapter.exit_context()
