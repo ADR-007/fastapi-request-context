@@ -36,9 +36,10 @@ def test_includes_context() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "test-123", "user_id": 456})
+    with adapter:
+        adapter.set_value("request_id", "test-123")
+        adapter.set_value("user_id", 456)
 
-    try:
         formatter = JsonContextFormatter()
         record = logging.LogRecord(
             name="test",
@@ -56,8 +57,6 @@ def test_includes_context() -> None:
         # Default is nested under "context" key
         assert data["context"]["request_id"] == "test-123"
         assert data["context"]["user_id"] == 456
-    finally:
-        adapter.exit_context()
 
 
 def test_flat_context_merge() -> None:
@@ -67,9 +66,10 @@ def test_flat_context_merge() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "test-123", "user_id": 456})
+    with adapter:
+        adapter.set_value("request_id", "test-123")
+        adapter.set_value("user_id", 456)
 
-    try:
         formatter = JsonContextFormatter(context_key=None)
         record = logging.LogRecord(
             name="test",
@@ -87,8 +87,6 @@ def test_flat_context_merge() -> None:
         # With context_key=None, context is merged flat
         assert data["request_id"] == "test-123"
         assert data["user_id"] == 456
-    finally:
-        adapter.exit_context()
 
 
 def test_context_key_nesting() -> None:
@@ -98,9 +96,9 @@ def test_context_key_nesting() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "test-123"})
+    with adapter:
+        adapter.set_value("request_id", "test-123")
 
-    try:
         formatter = JsonContextFormatter(context_key="context")
         record = logging.LogRecord(
             name="test",
@@ -117,8 +115,6 @@ def test_context_key_nesting() -> None:
 
         assert "context" in data
         assert data["context"]["request_id"] == "test-123"
-    finally:
-        adapter.exit_context()
 
 
 def test_exclude_standard_fields() -> None:

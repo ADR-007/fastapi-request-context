@@ -30,9 +30,10 @@ def test_includes_context() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "test-123", "user_id": 456})
+    with adapter:
+        adapter.set_value("request_id", "test-123")
+        adapter.set_value("user_id", 456)
 
-    try:
         formatter = SimpleContextFormatter(fmt="%(context)s %(message)s")
         record = logging.LogRecord(
             name="test",
@@ -47,8 +48,6 @@ def test_includes_context() -> None:
         output = formatter.format(record)
         assert "request_id=test-123" in output
         assert "user_id=456" in output
-    finally:
-        adapter.exit_context()
 
 
 def test_shorten_fields() -> None:
@@ -58,9 +57,9 @@ def test_shorten_fields() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "12345678901234567890"})
+    with adapter:
+        adapter.set_value("request_id", "12345678901234567890")
 
-    try:
         formatter = SimpleContextFormatter(
             fmt="%(context)s %(message)s",
             shorten_fields={"request_id"},
@@ -79,8 +78,6 @@ def test_shorten_fields() -> None:
         output = formatter.format(record)
         assert "request_id=12345678…" in output
         assert "12345678901234567890" not in output
-    finally:
-        adapter.exit_context()
 
 
 def test_hidden_fields() -> None:
@@ -90,14 +87,10 @@ def test_hidden_fields() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context(
-        {
-            "request_id": "shown",
-            "correlation_id": "hidden",
-        },
-    )
+    with adapter:
+        adapter.set_value("request_id", "shown")
+        adapter.set_value("correlation_id", "hidden")
 
-    try:
         formatter = SimpleContextFormatter(
             fmt="%(context)s %(message)s",
             hidden_fields={"correlation_id"},
@@ -115,8 +108,6 @@ def test_hidden_fields() -> None:
         output = formatter.format(record)
         assert "request_id=shown" in output
         assert "correlation_id" not in output
-    finally:
-        adapter.exit_context()
 
 
 def test_empty_context() -> None:
@@ -126,9 +117,7 @@ def test_empty_context() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({})
-
-    try:
+    with adapter:
         formatter = SimpleContextFormatter(fmt="%(context)s %(message)s")
         record = logging.LogRecord(
             name="test",
@@ -144,8 +133,6 @@ def test_empty_context() -> None:
         # Should not have empty brackets
         assert "[]" not in output
         assert "Test message" in output
-    finally:
-        adapter.exit_context()
 
 
 def test_all_fields_hidden() -> None:
@@ -155,9 +142,10 @@ def test_all_fields_hidden() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "test-123", "user_id": "456"})
+    with adapter:
+        adapter.set_value("request_id", "test-123")
+        adapter.set_value("user_id", "456")
 
-    try:
         formatter = SimpleContextFormatter(
             fmt="%(context)s %(message)s",
             hidden_fields={"request_id", "user_id"},
@@ -178,8 +166,6 @@ def test_all_fields_hidden() -> None:
         assert "request_id" not in output
         assert "user_id" not in output
         assert "Test message" in output
-    finally:
-        adapter.exit_context()
 
 
 def test_default_format() -> None:
@@ -196,9 +182,10 @@ def test_custom_separator() -> None:
 
     adapter = ContextVarsAdapter()
     set_adapter(adapter)
-    adapter.enter_context({"request_id": "abc", "user_id": "123"})
+    with adapter:
+        adapter.set_value("request_id", "abc")
+        adapter.set_value("user_id", "123")
 
-    try:
         formatter = SimpleContextFormatter(
             fmt="%(context)s %(message)s",
             separator=", ",
@@ -215,5 +202,3 @@ def test_custom_separator() -> None:
 
         output = formatter.format(record)
         assert "request_id=abc, user_id=123" in output
-    finally:
-        adapter.exit_context()

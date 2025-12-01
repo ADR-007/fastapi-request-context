@@ -167,14 +167,16 @@ class RequestContextMiddleware(FastAPIWrapperMiddleware):
         )
 
         # Set up context
-        initial_context: dict[str, Any] = {
-            StandardContextField.REQUEST_ID.value: request_id,
-            StandardContextField.CORRELATION_ID.value: correlation_id,
-        }
+        with self.__adapter:
+            self.__adapter.set_value(
+                StandardContextField.REQUEST_ID.value,
+                request_id,
+            )
+            self.__adapter.set_value(
+                StandardContextField.CORRELATION_ID.value,
+                correlation_id,
+            )
 
-        self.__adapter.enter_context(initial_context)
-
-        try:
             if self.__config.add_response_headers:
                 # Wrap send to inject headers
                 async def send_with_headers(message: Message) -> None:
@@ -200,5 +202,3 @@ class RequestContextMiddleware(FastAPIWrapperMiddleware):
                 await self._app(scope, receive, send_with_headers)
             else:
                 await self._app(scope, receive, send)
-        finally:
-            self.__adapter.exit_context()

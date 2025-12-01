@@ -71,9 +71,10 @@ uv add --dev package-name
 1. Request arrives → Middleware intercepts
 2. Generate request_id (always new)
 3. Extract/generate correlation_id (from header or new)
-4. Store in context via adapter.enter_context()
-5. Inject headers into response via send_with_headers()
-6. Clean up via adapter.exit_context() in finally block
+4. Enter context via `with adapter:` context manager
+5. Set values via adapter.set_value()
+6. Inject headers into response via send_with_headers()
+7. Context automatically cleaned up when exiting `with` block
 ```
 
 ### Key Architectural Decisions
@@ -85,7 +86,7 @@ The library uses a pluggable adapter system to decouple context storage from the
 - `ContextLoggingAdapter` (optional): Uses context-logging library for integration with access logs
 - Custom adapters can be implemented by users
 
-**Why This Matters**: When modifying context behavior, changes must be made in the adapter, not the middleware. The middleware only calls `enter_context()`, `exit_context()`, and users call `set_value()`, `get_value()`, `get_all()` via context.py wrappers.
+**Why This Matters**: When modifying context behavior, changes must be made in the adapter, not the middleware. The middleware uses `with adapter:` and calls `set_value()`, while users call `set_value()`, `get_value()`, `get_all()` via context.py wrappers.
 
 **Security: Request ID Always Generated**
 The middleware always generates a new request_id using the configured generator, never accepting it from request headers. This prevents:
@@ -126,24 +127,24 @@ fastapi_request_context/
 
 ### Context Adapters: How They Work
 
-Each adapter must implement the `ContextAdapter` protocol:
-1. `enter_context(initial_values)` - Called when request starts
+Each adapter must implement the `ContextAdapter` protocol (a context manager):
+1. `__enter__()` - Called when request starts (returns self)
 2. `set_value(key, value)` - Store a context value
 3. `get_value(key)` - Retrieve a context value
 4. `get_all()` - Get all context as dict
-5. `exit_context()` - Called when request ends (cleanup)
+5. `__exit__()` - Called when request ends (cleanup)
 
 **ContextVarsAdapter** (default):
 - Uses a single ContextVar that stores a dict
-- In `enter_context()`: Creates new dict and sets it via `.set()`
-- In `exit_context()`: Resets the ContextVar
+- In `__enter__()`: Creates new empty dict and sets it via `.set()`
+- In `__exit__()`: Resets the ContextVar to None
 - Leverages Python's automatic context propagation in async code
 
 **ContextLoggingAdapter**:
 - Wraps the context-logging library
 - Enables automatic context inclusion in ALL log records, including Uvicorn access logs
-- Uses context_logging.setup_log_record() in enter_context()
-- Uses context_logging.clear_log_record() in exit_context()
+- Uses context_logging.Context() in `__enter__()`
+- Cleans up context in `__exit__()`
 
 ### Validation Utilities: Why They Exist
 
@@ -202,11 +203,9 @@ async def test_middleware():
 ```python
 async def test_context():
     adapter = ContextVarsAdapter()
-    adapter.enter_context({"test": "value"})
-    try:
+    with adapter:
+        adapter.set_value("test", "value")
         assert adapter.get_value("test") == "value"
-    finally:
-        adapter.exit_context()
 ```
 
 **Testing Formatters**: Capture log records and verify format
@@ -247,11 +246,11 @@ class MyAppContextField(StrEnum):
 All middleware logic is in `RequestContextMiddleware.__call__()`:
 1. Check scope type filtering
 2. Generate IDs
-3. Call `adapter.enter_context()`
-4. Wrap send function if headers enabled
-5. Clean up in finally block
+3. Use `with adapter:` context manager
+4. Set context values via `adapter.set_value()`
+5. Wrap send function if headers enabled
 
-**Critical**: Always use try/finally to ensure `exit_context()` is called, even if the app raises exceptions.
+**Critical**: Always use `with adapter:` to ensure proper cleanup, even if the app raises exceptions.
 
 ### Configuration Changes
 When adding new config options:
@@ -350,7 +349,8 @@ BREAKING CHANGE: RequestContextConfig.id_validator signature changed
 
 **adapters/base.py** - Protocol definition
 - Understand this to see what adapters must implement
-- Only 5 methods: set_value, get_value, get_all, enter_context, exit_context
+- Context manager protocol: __enter__, __exit__
+- Data methods: set_value, get_value, get_all
 
 **validation.py** - Async validation
 - `is_async()` - Core detection logic handles coroutines, callables, classes

@@ -1,7 +1,7 @@
 """Context adapter using Python's built-in contextvars."""
 
 from contextvars import ContextVar
-from typing import Any
+from typing import Any, Self
 
 from fastapi_request_context.types import ContextDict
 
@@ -67,16 +67,22 @@ class ContextVarsAdapter:
             return {}
         return dict(context)
 
-    def enter_context(self, initial_values: dict[str, Any]) -> None:
-        """Enter a new context scope with initial values.
+    def __enter__(self) -> Self:
+        """Enter a new context scope.
 
-        Args:
-            initial_values: Initial context values to set.
+        Returns:
+            Self for use in with statement.
         """
         # Set a new dict for this context - contextvars handles isolation
-        _context_var.set(dict(initial_values))
+        _context_var.set({})
+        return self
 
-    def exit_context(self) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """Exit the current context scope.
 
         Clears the context dict. Each async task has its own copy due to

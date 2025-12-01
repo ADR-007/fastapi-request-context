@@ -1,6 +1,6 @@
 """Context adapter using context-logging library."""
 
-from typing import Any
+from typing import Any, Self
 
 
 class ContextLoggingAdapter:
@@ -78,19 +78,25 @@ class ContextLoggingAdapter:
 
         return dict(current_context)
 
-    def enter_context(self, initial_values: dict[str, Any]) -> None:
-        """Enter a new context scope with initial values.
+    def __enter__(self) -> Self:
+        """Enter a new context scope.
 
-        Args:
-            initial_values: Initial context values to set.
+        Returns:
+            Self for use in with statement.
         """
         from context_logging import Context  # noqa: PLC0415
 
-        self._context_manager = Context(**initial_values)
+        self._context_manager = Context()
         self._context_manager.__enter__()
+        return self
 
-    def exit_context(self) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """Exit the current context scope."""
         if self._context_manager is not None:
-            self._context_manager.__exit__(None, None, None)
+            self._context_manager.__exit__(exc_type, exc_val, exc_tb)
             self._context_manager = None

@@ -238,31 +238,8 @@ So, each log record will include the request context, and you can add nested sco
 
 ### Custom Context Adapter
 
-```python
-from fastapi_request_context.adapters import ContextAdapter
-
-
-class RedisAdapter(ContextAdapter):
-    def set_value(self, key: str, value: Any) -> None:
-        redis.hset(self._request_key, key, value)
-
-    def get_value(self, key: str) -> Any:
-        return redis.hget(self._request_key, key)
-
-    def get_all(self) -> dict[str, Any]:
-        return redis.hgetall(self._request_key)
-
-    def enter_context(self, initial_values: dict[str, Any]) -> None:
-        self._request_key = f"request:{uuid4()}"
-        redis.hmset(self._request_key, initial_values)
-
-    def exit_context(self) -> None:
-        redis.delete(self._request_key)
-
-
-config = RequestContextConfig(context_adapter=RedisAdapter())
-app = RequestContextMiddleware(app, config=config)
-```
+You can implement custom adapters (e.g., Redis-backed) by implementing the `ContextAdapter` protocol.
+See [examples/custom_adapter.py](examples/custom_adapter.py) for a complete example.
 
 ### Validation Utilities
 

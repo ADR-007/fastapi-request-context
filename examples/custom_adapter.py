@@ -4,7 +4,7 @@ This example shows how to create a custom context adapter
 for specialized storage needs (Redis, database, etc.).
 """
 
-from typing import Any
+from typing import Any, Self
 
 from fastapi import FastAPI
 
@@ -42,12 +42,18 @@ class InMemoryAdapter(ContextAdapter):
         """Get all stored values."""
         return dict(self._storage)
 
-    def enter_context(self, initial_values: dict[str, Any]) -> None:
-        """Initialize context with values."""
-        self._storage = dict(initial_values)
-        print(f"  [InMemoryAdapter] Enter context: {initial_values}")
+    def __enter__(self) -> Self:
+        """Enter context scope."""
+        self._storage = {}
+        print("  [InMemoryAdapter] Enter context")
+        return self
 
-    def exit_context(self) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """Clean up context."""
         print(f"  [InMemoryAdapter] Exit context: {self._storage}")
         self._storage.clear()

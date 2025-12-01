@@ -1,6 +1,6 @@
 """Base protocol for context adapters."""
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, Self, runtime_checkable
 
 
 @runtime_checkable
@@ -14,24 +14,8 @@ class ContextAdapter(Protocol):
     - `ContextLoggingAdapter`: Uses context-logging library (optional dependency)
 
     Custom adapters can be created by implementing this protocol.
-
-    Example:
-        >>> class RedisAdapter(ContextAdapter):
-        ...     def set_value(self, key: str, value: Any) -> None:
-        ...         redis.hset(self._request_key, key, value)
-        ...
-        ...     def get_value(self, key: str) -> Any:
-        ...         return redis.hget(self._request_key, key)
-        ...
-        ...     def get_all(self) -> dict[str, Any]:
-        ...         return redis.hgetall(self._request_key)
-        ...
-        ...     def enter_context(self, initial_values: dict[str, Any]) -> None:
-        ...         self._request_key = f"request:{uuid4()}"
-        ...         redis.hmset(self._request_key, initial_values)
-        ...
-        ...     def exit_context(self) -> None:
-        ...         redis.delete(self._request_key)
+    Adapters are context managers - use `with adapter:` to enter/exit scope.
+    See examples/custom_adapter.py for a complete example.
     """
 
     def set_value(self, key: str, value: Any) -> None:  # noqa: ANN401
@@ -62,17 +46,22 @@ class ContextAdapter(Protocol):
         """
         ...
 
-    def enter_context(self, initial_values: dict[str, Any]) -> None:
-        """Enter a new context scope with initial values.
+    def __enter__(self) -> Self:
+        """Enter a new context scope.
 
         Called at the start of each request to initialize context storage.
 
-        Args:
-            initial_values: Initial context values to set (e.g., request_id).
+        Returns:
+            Self for use in with statement.
         """
         ...
 
-    def exit_context(self) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """Exit the current context scope.
 
         Called at the end of each request to clean up context storage.

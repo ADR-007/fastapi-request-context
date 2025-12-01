@@ -11,50 +11,36 @@ from fastapi_request_context.adapters import ContextAdapter, ContextLoggingAdapt
 def test_set_and_get_value() -> None:
     """Test basic set and get operations."""
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({})
-
-    try:
+    with adapter:
         adapter.set_value("key1", "value1")
         assert adapter.get_value("key1") == "value1"
-    finally:
-        adapter.exit_context()
 
 
 def test_get_nonexistent_value() -> None:
     """Test getting a nonexistent key returns None."""
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({})
-
-    try:
+    with adapter:
         assert adapter.get_value("nonexistent") is None
-    finally:
-        adapter.exit_context()
 
 
 def test_get_all() -> None:
     """Test getting all values."""
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({"initial": "value"})
-
-    try:
+    with adapter:
+        adapter.set_value("initial", "value")
         adapter.set_value("key1", "value1")
 
         all_values = adapter.get_all()
         assert "initial" in all_values
         assert "key1" in all_values
-    finally:
-        adapter.exit_context()
 
 
-def test_enter_context_with_initial_values() -> None:
-    """Test entering context with initial values."""
+def test_context_manager_sets_values() -> None:
+    """Test that context manager allows setting values."""
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({"request_id": "123"})
-
-    try:
+    with adapter:
+        adapter.set_value("request_id", "123")
         assert adapter.get_value("request_id") == "123"
-    finally:
-        adapter.exit_context()
 
 
 def test_implements_protocol() -> None:
@@ -63,11 +49,11 @@ def test_implements_protocol() -> None:
     assert isinstance(adapter, ContextAdapter)
 
 
-def test_exit_context_without_enter() -> None:
-    """Test that exit_context does nothing when not entered."""
+def test_exit_without_enter() -> None:
+    """Test that __exit__ does nothing when not entered."""
     adapter = ContextLoggingAdapter()
     # Should not raise, just do nothing
-    adapter.exit_context()
+    adapter.__exit__(None, None, None)
 
 
 def test_import_error_message(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -101,9 +87,10 @@ def test_context_injected_into_log_records(caplog: pytest.LogCaptureFixture) -> 
     setup_log_record()
 
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({"request_id": "test-request-123", "user_id": "user-456"})
+    with adapter:
+        adapter.set_value("request_id", "test-request-123")
+        adapter.set_value("user_id", "user-456")
 
-    try:
         logger = logging.getLogger("test_context_logging")
         with caplog.at_level(logging.INFO):
             logger.info("Test message")
@@ -115,8 +102,6 @@ def test_context_injected_into_log_records(caplog: pytest.LogCaptureFixture) -> 
         assert hasattr(record, "context")
         assert record.context["request_id"] == "test-request-123"  # type: ignore[attr-defined]
         assert record.context["user_id"] == "user-456"  # type: ignore[attr-defined]
-    finally:
-        adapter.exit_context()
 
 
 def test_context_injection_with_dynamic_values(caplog: pytest.LogCaptureFixture) -> None:
@@ -130,9 +115,9 @@ def test_context_injection_with_dynamic_values(caplog: pytest.LogCaptureFixture)
     setup_log_record()
 
     adapter = ContextLoggingAdapter()
-    adapter.enter_context({"request_id": "req-001"})
+    with adapter:
+        adapter.set_value("request_id", "req-001")
 
-    try:
         logger = logging.getLogger("test_context_logging_dynamic")
 
         # Set additional context after entering
@@ -145,10 +130,8 @@ def test_context_injection_with_dynamic_values(caplog: pytest.LogCaptureFixture)
         assert len(caplog.records) == 1
         record = caplog.records[0]
 
-        # Both initial and dynamic values should be in record.context
+        # All values should be in record.context
         assert hasattr(record, "context")
         assert record.context["request_id"] == "req-001"  # type: ignore[attr-defined]
         assert record.context["correlation_id"] == "corr-xyz"  # type: ignore[attr-defined]
         assert record.context["tenant_id"] == "tenant-abc"  # type: ignore[attr-defined]
-    finally:
-        adapter.exit_context()
