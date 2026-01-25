@@ -20,15 +20,31 @@ class ContextLoggingAdapter:
         >>> from fastapi_request_context import RequestContextMiddleware, RequestContextConfig
         >>> from fastapi_request_context.adapters import ContextLoggingAdapter
         >>>
-        >>> config = RequestContextConfig(context_adapter=ContextLoggingAdapter())
+        >>> adapter = ContextLoggingAdapter(
+        ...     name="request_context",
+        ...     log_execution_time=True,
+        ...     fill_exception_context=True
+        ... )
+        >>> config = RequestContextConfig(context_adapter=adapter)
         >>> app = RequestContextMiddleware(app, config=config)
 
     Raises:
         ImportError: If context-logging is not installed.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        name: str | None = None,
+        *,
+        log_execution_time: bool | None = None,
+        fill_exception_context: bool | None = None,
+    ) -> None:
         """Initialize the adapter.
+
+        Args:
+            name: Optional name for the context.
+            log_execution_time: Whether to log execution time for the context.
+            fill_exception_context: Whether to fill exception context automatically.
 
         Raises:
             ImportError: If context-logging is not installed.
@@ -42,6 +58,9 @@ class ContextLoggingAdapter:
             )
             raise ImportError(msg) from e
 
+        self._name = name
+        self._log_execution_time = log_execution_time
+        self._fill_exception_context = fill_exception_context
         self._context_manager: Any = None
 
     def set_value(self, key: str, value: Any) -> None:  # noqa: ANN401
@@ -86,7 +105,11 @@ class ContextLoggingAdapter:
         """
         from context_logging import Context  # noqa: PLC0415
 
-        self._context_manager = Context()
+        self._context_manager = Context(
+            self._name,
+            log_execution_time=self._log_execution_time,
+            fill_exception_context=self._fill_exception_context,
+        )
         self._context_manager.__enter__()
         return self
 
