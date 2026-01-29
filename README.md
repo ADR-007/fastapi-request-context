@@ -34,6 +34,9 @@ pip install fastapi-request-context[context-logging]
 # With JSON formatter support
 pip install fastapi-request-context[json-formatter]
 
+# With Taskiq integration (background tasks)
+pip install fastapi-request-context[taskiq]
+
 # All optional dependencies
 pip install fastapi-request-context[all]
 ```
@@ -298,6 +301,62 @@ async def stream():
 
 > **Note:** Requires `context-logging` extra: `pip install fastapi-request-context[context-logging]`
 
+## Contrib Integrations
+
+### Taskiq Integration
+
+Automatically propagate request context to background tasks using [Taskiq](https://taskiq-python.github.io/):
+
+**Installation:**
+```bash
+pip install fastapi-request-context[taskiq]
+```
+
+**Usage:**
+```python
+from fastapi import FastAPI
+from taskiq import InMemoryBroker
+from fastapi_request_context import RequestContextMiddleware, get_context, set_context
+from fastapi_request_context.contrib.taskiq import RequestContextTaskiqMiddleware
+from fastapi_request_context.fields import StandardContextField
+
+# Set up Taskiq broker with middleware
+broker = InMemoryBroker()
+broker = broker.with_middlewares(RequestContextTaskiqMiddleware())
+
+app = FastAPI()
+app = RequestContextMiddleware(app)
+
+@broker.task
+async def process_data(user_id: int):
+    # Context is automatically available in tasks
+    correlation_id = get_context(StandardContextField.CORRELATION_ID)
+    task_id = get_context(StandardContextField.TASK_ID)
+    custom_field = get_context("custom_field")
+    
+    # Your task logic here
+    return {"processed": user_id, "correlation_id": correlation_id}
+
+@app.post("/trigger")
+async def trigger_task():
+    # Set custom context in the request handler
+    set_context("custom_field", "custom_value")
+    
+    # Task inherits correlation_id and custom fields (but not request_id)
+    await process_data.kiq(user_id=123)
+    return {"status": "task queued"}
+```
+
+**Features:**
+- ✅ Automatic context propagation to background tasks
+- ✅ `CORRELATION_ID` preserved for distributed tracing
+- ✅ Custom context fields propagated
+- ✅ `TASK_ID` automatically injected (from Taskiq's task ID)
+- ✅ `REQUEST_ID` excluded (each task environment has its own)
+- ✅ Works with any Taskiq broker (InMemory, Redis, RabbitMQ, etc.)
+
+See [examples/taskiq_integration.py](examples/taskiq_integration.py) for a complete example.
+
 ## API Reference
 
 ### Middleware
@@ -317,7 +376,7 @@ async def stream():
 
 ### Fields
 
-- `StandardContextField` - Built-in fields (REQUEST_ID, CORRELATION_ID)
+- `StandardContextField` - Built-in fields (REQUEST_ID, CORRELATION_ID, TASK_ID)
 
 ### Adapters
 

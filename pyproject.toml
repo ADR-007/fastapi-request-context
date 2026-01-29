@@ -30,10 +30,12 @@ dependencies = [
 [project.optional-dependencies]
 context-logging = ["context-logging>=0.7.0"]
 json-formatter = ["python-json-logger>=2.0.0"]
+taskiq = ["taskiq>=0.11.0"]
 build = ["uv>=0.9.0"]
 all = [
     "context-logging>=0.7.0",
     "python-json-logger>=2.0.0",
+    "taskiq>=0.11.0",
 ]
 
 [project.urls]
@@ -69,6 +71,7 @@ dev = [
     "context-logging>=0.7.0",
     "python-json-logger>=2.0.0",
     "httpx>=0.27.0",
+    "taskiq>=0.11.0",
 ]
 
 [tool.tox]
@@ -191,6 +194,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "pythonjsonlogger.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "taskiq.*"
 ignore_missing_imports = true
 
 [tool.ruff]
