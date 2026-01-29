@@ -23,3 +23,6 @@ class StandardContextField(StrEnum):
 
     CORRELATION_ID = "correlation_id"
     """Correlation ID for distributed tracing. May be from header or generated."""
+
+    TASK_ID = "task_id"
+    """Unique identifier for background task execution."""
